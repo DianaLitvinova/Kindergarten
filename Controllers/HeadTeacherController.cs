@@ -1040,13 +1040,25 @@ namespace Diana_Litvinova_IPZ_4_0_1.Controllers
                 using var transaction = await conn.BeginTransactionAsync();
                 try
                 {
-                    var currentUserId = Int16.Parse(HttpContext.Session.GetString("Username"));
+                    // Получаем имя текущего пользователя из сессии
+                    var username = HttpContext.Session.GetString("Username");
+
+                    // Получаем ID заведующего по имени из сессии
+                    Int16 headTeacherId;
+                    using (var userCmd = new NpgsqlCommand(
+                        "SELECT ID FROM Employee WHERE fullname = @username", conn))
+                    {
+                        userCmd.Parameters.AddWithValue("username", username);
+                        headTeacherId = (Int16)await userCmd.ExecuteScalarAsync();
+                    }
+
+                    // Добавляем запись об оплате
                     using var cmd = new NpgsqlCommand(@"
                 INSERT INTO PaymentReportFamily (ID_family, ID_head, payment)
                 VALUES (@familyId, @headId, @amount)", conn);
 
                     cmd.Parameters.AddWithValue("familyId", familyId);
-                    cmd.Parameters.AddWithValue("headId", currentUserId);
+                    cmd.Parameters.AddWithValue("headId", headTeacherId);
                     cmd.Parameters.AddWithValue("amount", amount);
 
                     await cmd.ExecuteNonQueryAsync();
